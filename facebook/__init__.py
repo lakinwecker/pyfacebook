@@ -899,7 +899,7 @@ class Facebook(object):
 
     """
 
-    def __init__(self, api_key, secret_key, auth_token=None, app_name=None, callback_path=None, internal=None, proxy=None, facebook_url=None, facebook_secure_url=None):
+    def __init__(self, api_key, secret_key, auth_token=None, app_name=None, callback_path=None, internal=None, proxy=None, facebook_url=None, facebook_secure_url=None, app_id=None):
         """
         Initializes a new Facebook object which provides wrappers for the Facebook API.
 
@@ -917,6 +917,7 @@ class Facebook(object):
 
         """
         self.api_key = api_key
+        self.app_id = app_id
         self.secret_key = secret_key
         self.session_key = None
         self.session_key_expires = None
@@ -1314,6 +1315,8 @@ class Facebook(object):
             self.session_key = params['session_key']
             if 'user' in params:
                 self.uid = params['user']
+            elif 'uid' in params:
+                self.uid = params['uid']
             elif 'page_id' in params:
                 self.page_id = params['page_id']
             else:
@@ -1363,30 +1366,54 @@ class Facebook(object):
         Validate parameters passed by cookies, namely facebookconnect or js api.
         """
 
+        params_cookie_key = "fbs_%s" % self.app_id
         api_key = self.api_key
         if api_key not in cookies:
             return None
 
         prefix = api_key + "_"
        
-        params = {} 
+        # From [1] the fbs_{{ app_id }} cookie will be set with these params:
+        # [1] - http://developers.facebook.com/docs/guides/web#login
+        params_cookie_value = cookies.get(params_cookie_key, None)
+        
+        params = {}
         vals = ''
-        for k in sorted(cookies):
-            if k.startswith(prefix):
-                key = k.replace(prefix,"")
-                value = cookies[k]
-                params[key] = value
-                vals += '%s=%s' % (key, value)
-                
-        hasher = hashlib.md5(vals)
+        if params_cookie_value is None:
+            # do it the older way.
+            for k in sorted(cookies):
+                if k.startswith(prefix):
+                    key = k.replace(prefix,"")
+                    value = cookies[k]
+                    params[key] = value
+                    vals += '%s=%s' % (key, value)
 
-        hasher.update(self.secret_key)
-        digest = hasher.hexdigest()
-        if digest == cookies[api_key]:
-            params['is_session_from_cookie'] = True
-            return params
+            hasher = hashlib.md5(vals)
+            hasher.update(self.secret_key)
+            digest = hasher.hexdigest()
+
+            if digest == cookies[api_key]:
+                params['is_session_from_cookie'] = True
+                return params
+            else:
+                return False
+
         else:
-            return False
+            cookie_params_dict = urlparse.parse_qs(params_cookie_value)
+            for k,v in sorted(cookie_params_dict.iteritems()):
+                params[k] = v[0]
+                if k != 'sig':
+                    vals += '%s=%s' % (k,v[0])
+            hasher = hashlib.md5(vals)
+            hasher.update(self.secret_key)
+            digest = hasher.hexdigest()
+
+            if digest == cookie_params_dict['sig'][0]:
+                params['is_session_from_cookie'] = True
+                return params
+            else:
+                return False
+
 
 
 

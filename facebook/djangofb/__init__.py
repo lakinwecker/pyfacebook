@@ -194,8 +194,9 @@ class FacebookMiddleware(object):
 
     """
 
-    def __init__(self, api_key=None, secret_key=None, app_name=None, callback_path=None, internal=None):
+    def __init__(self, api_key=None, secret_key=None, app_name=None, callback_path=None, internal=None, app_id=None):
         self.api_key = api_key or settings.FACEBOOK_API_KEY
+        self.app_id = app_id or settings.FACEBOOK_APP_ID
         self.secret_key = secret_key or settings.FACEBOOK_SECRET_KEY
         self.app_name = app_name or getattr(settings, 'FACEBOOK_APP_NAME', None)
         self.callback_path = callback_path or getattr(settings, 'FACEBOOK_CALLBACK_PATH', None)
@@ -205,7 +206,7 @@ class FacebookMiddleware(object):
             self.proxy = settings.HTTP_PROXY
 
     def process_request(self, request):
-        _thread_locals.facebook = request.facebook = Facebook(self.api_key, self.secret_key, app_name=self.app_name, callback_path=self.callback_path, internal=self.internal, proxy=self.proxy)
+        _thread_locals.facebook = request.facebook = Facebook(self.api_key, self.secret_key, app_name=self.app_name, callback_path=self.callback_path, internal=self.internal, proxy=self.proxy, app_id=self.app_id)
         if not self.internal:
             if 'fb_sig_session_key' in request.GET and 'fb_sig_user' in request.GET:
                 request.facebook.session_key = request.session['facebook_session_key'] = request.GET['fb_sig_session_key']
