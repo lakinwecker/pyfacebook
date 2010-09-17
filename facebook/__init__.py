@@ -1368,7 +1368,8 @@ class Facebook(object):
 
         params_cookie_key = "fbs_%s" % self.app_id
         api_key = self.api_key
-        if api_key not in cookies:
+
+        if (api_key not in cookies) and (params_cookie_key not in cookies):
             return None
 
         prefix = api_key + "_"
